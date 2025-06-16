@@ -5,9 +5,6 @@ import org.apache.spark.ml.feature.{Bucketizer, StringIndexerModel, VectorAssemb
 import org.apache.spark.sql.functions.{concat, from_json, lit}
 import org.apache.spark.sql.types.{DataTypes, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-// import para serialización de datos
-import org.apache.spark.sql.functions.{concat, from_json, lit, to_json, struct}
-
 
 object MakePrediction {
 
@@ -143,7 +140,7 @@ object MakePrediction {
     val dataStreamWriter = finalPredictions
       .writeStream
       .format("mongodb")
-      .option("spark.mongodb.connection.uri", "mongodb://mongodb:27017")
+      .option("spark.mongodb.connection.uri", "mongodb://127.0.0.1:27017")
       .option("spark.mongodb.database", "agile_data_science")
       .option("checkpointLocation", "/tmp")
       .option("spark.mongodb.collection", "flight_delay_ml_response")
@@ -151,26 +148,6 @@ object MakePrediction {
 
     // run the query
     val query = dataStreamWriter.start()
-
-    // ------------- Importación de datos a Kafka ----------
-
-    // Definimos el servidor y el topic donde publicar los resultados
-
-    //val kafkaBootstrapServers = "kafka:9092" // contenedor de kafka
-    //val resultTopic = "flight_delay_classification_results" // topic
-
-    // Convertimos los datos a JSON
-    //val kafkaOut = finalPredictions.selectExpr("UUID", "to_json(struct(*)) AS value").select($"value")
-
-    //val kafkaStreamWriter = kafkaOut
-    //  .writeStream
-    //  .format("kafka")
-    //  .option("kafka.bootstrap.servers", kafkaBootstrapServers)
-    //  .option("topic", resultTopic)
-    //  .option("checkpointLocation", "/tmp/kafka-checkpoint")
-    //  .outputMode("append")
-    //  .start()
-
     // Console Output for predictions
 
     val consoleOutput = finalPredictions.writeStream
