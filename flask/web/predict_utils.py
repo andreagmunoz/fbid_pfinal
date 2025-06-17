@@ -31,14 +31,15 @@ def strip_place(url):
     return url
   return p
 
-def get_flight_distance(client, origin, dest):
-  """Get the distance between a pair of airport codes"""
-  query = {
-    "Origin": origin,
-    "Dest": dest,
-  }
-  record = client.agile_data_science.origin_dest_distances.find_one(query)
-  return record["Distance"]
+def get_flight_distance(session, origin, dest):
+  query = """
+  SELECT distance FROM origin_dest_distances
+  WHERE origin=%s AND destination=%s
+  LIMIT 1;
+  """
+  result = session.execute(query, (origin, dest))
+  row = result.one()
+  return row['distance'] if row else None
 
 def get_regression_date_args(iso_date):
   """Given an ISO Date, return the day of year, day of month, day of week as the API expects them."""

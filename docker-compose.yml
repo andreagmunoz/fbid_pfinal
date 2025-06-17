@@ -31,21 +31,51 @@ services:
     depends_on:
     - zookeeper
     entrypoint: ["/kafka-scripts/create_topics.sh"]
+#
+ # mongo:  
+ #   image: mongo:7.0.17  
+ #   container_name: mongodb
+ #   ports:  
+ #     - "27017:27017"  
+ #   volumes:  
+ #     - mongodb_data:/data/db  # Persistencia de datos de la base de datos si se borra el contenedor
+ #     - ./mongo/init:/docker-entrypoint-initdb.d/  # inicializacion la primera vez - ejecuta import_distances.sh
+ #   environment:  
+ #     - MONGO_INITDB_DATABASE=agile_data_science 
+ #   networks:
+ #     - docker_network
+#
+  cassandra:
+      image: cassandra:3.11  
+      container_name: cassandra
+      ports:
+        - "9042:9042"  
+      networks:
+        - docker_network
+      restart: always
+      command: ["cassandra", "-f"]  # Inicia Cassandra en primer plano
+      healthcheck:
+        test: ["CMD", "cqlsh", "-e", "SELECT now() FROM system.local"]
+        interval: 30s
+        retries: 5
+        start_period: 30s
+        timeout: 10s
 
-  mongo:  
-    image: mongo:7.0.17  
-    container_name: mongodb
-    ports:  
-      - "27017:27017"  
-    volumes:  
-      - mongodb_data:/data/db  # Persistencia de datos de la base de datos si se borra el contenedor
-      - ./mongo/init:/docker-entrypoint-initdb.d/  # inicializacion la primera vez - ejecuta import_distances.sh
-    environment:  
-      - MONGO_INITDB_DATABASE=agile_data_science 
+  cassandra-init:
+    image: cassandra:3.11  # Usa la misma imagen de Cassandra
+    container_name: cassandra-seed
+    depends_on:
+       - cassandra
     networks:
       - docker_network
-      
+    entrypoint:  ["/bin/bash", "/init-data/init.sh"]
+    restart: "no"  # Este servicio se ejecuta una vez y luego termina
+    volumes:
+      - ./cassandra/init:/init-data  # Monta el directorio con los datos para inicialización
+    
+
   flask:
+    container_name: flask
     build:
       context: ./flask
       dockerfile: Dockerfile
@@ -61,7 +91,9 @@ services:
       python3 predict_flask.py" 
     networks:
       - docker_network
-
+    depends_on: 
+      cassandra:
+        condition: service_healthy
   proxy:
     image: node:18-alpine
     container_name: proxy
@@ -139,7 +171,7 @@ services:
       - ./spark:/spark/base
       - spark-checkpoint:/checkpoint
     command: >
-      bash -c "sleep 15; /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master spark://spark-master:7077 --packages org.mongodb.spark:mongo-spark-connector_2.12:10.1.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 /spark/base/flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar"
+      bash -c "sleep 15; /spark/bin/spark-submit --class es.upm.dit.ging.predictor.MakePrediction --master spark://spark-master:7077 --packages com.datastax.spark:spark-cassandra-connector_2.12:3.4.1,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0 /spark/base/flight_prediction/target/scala-2.12/flight_prediction_2.12-0.1.jar"
     networks:
       - docker_network
 volumes:  

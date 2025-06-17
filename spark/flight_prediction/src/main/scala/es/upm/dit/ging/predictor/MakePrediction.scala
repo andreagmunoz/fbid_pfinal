@@ -1,5 +1,5 @@
 package es.upm.dit.ging.predictor
-import com.mongodb.spark._
+//import com.mongodb.spark._
 //import com.mongodb.spark.MongoSpark
 //import com.mongodb.spark.config.WriteConfig
 import org.apache.spark.ml.classification.RandomForestClassificationModel
@@ -13,12 +13,23 @@ object MakePrediction {
   def main(args: Array[String]): Unit = {
     println("Fligth predictor starting...")
 
-    val spark = SparkSession
-      .builder
-      .appName("StructuredNetworkWordCount")
+    // MONGO
+    // val spark = SparkSession
+    //   .builder
+    //   .appName("StructuredNetworkWordCount")
+    //   .master("spark://spark-master:7077")
+    //   .getOrCreate()
+    // import spark.implicits._
+
+    // ------------------ CASSANDRA ----------------
+    val spark = SparkSession.builder
+      .appName("PredictionsCassandra")
       .master("spark://spark-master:7077")
+      .config("spark.cassandra.connection.host", "cassandra")
+      .config("spark.cassandra.connection.port", "9042")
       .getOrCreate()
     import spark.implicits._
+
 
     //Load the arrival delay bucketizer
     val base_path = "/spark/base"
@@ -151,7 +162,7 @@ object MakePrediction {
       .outputMode("append")
       .start()
 
-    // Define MongoUri for connection
+    // MONGO
     //val writeConfig = WriteConfig(Map("uri" -> "mongodb://mongodb:27017"/agile_data_science.flight_delay_ml_response"))
 
     // Store to Mongo each streaming batch
@@ -161,30 +172,53 @@ object MakePrediction {
     //}.start()
 
     // define a streaming query
-    val dataStreamWriter = finalPredictions
+    //val dataStreamWriter = finalPredictions
 
       //spark.readStream
 
       //.schema(finalPredictions.schema)
       //.load()
       // manipulate your streaming data
-      .writeStream
-      .format("mongodb")
-      .option("spark.mongodb.connection.uri", "mongodb://mongodb:27017")
-      .option("spark.mongodb.database", "agile_data_science")
-      .option("checkpointLocation", "/checkpoint/mongo")
-      .option("spark.mongodb.collection", "flight_delay_ml_response")
-      .outputMode("append")
+      //.writeStream
+      //.format("mongodb")
+      //.option("spark.mongodb.connection.uri", "mongodb://mongodb:27017")
+      //.option("spark.mongodb.database", "agile_data_science")
+      //.option("checkpointLocation", "/checkpoint/mongo")
+      //.option("spark.mongodb.collection", "flight_delay_ml_response")
+      //.outputMode("append")
 
     // run the query
-    val query = dataStreamWriter.start()
+    //val query = dataStreamWriter.start()
     // Console Output for predictions
 
+    // -------------------------------- CASSANDRA -----------------------------
+
+    //val cassandraWrite = finalPredictions.writeStream.foreachBatch { (batchDF: DataFrame, batchId: Long) =>
+    //  batchDF.write
+    //    .format("org.apache.spark.sql.cassandra")
+    //    .option("keyspace", "agile_data_science")
+    //    .option("table", "predictions")
+    //    .mode("append")
+    //    .save()
+    //}.start()
+
+    finalPredictions.writeStream.foreachBatch { (batchDF: DataFrame, batchId: Long) => 
+      // Convert all column headers to lowercase
+      val dfWithLowercaseHeaders = batchDF.toDF(batchDF.columns.map(_.toLowerCase): _*)
+
+      // Write the DataFrame to Cassandra
+      dfWithLowercaseHeaders
+        .write
+        .format("org.apache.spark.sql.cassandra")
+        .options(Map("table" -> "predictions", "keyspace" -> "agile_data_science"))
+        .mode("append")
+        .save
+    }.start
+    
     val consoleOutput = finalPredictions.writeStream
       .outputMode("append")
       .format("console")
       .start()
     consoleOutput.awaitTermination()
   }
-
 }

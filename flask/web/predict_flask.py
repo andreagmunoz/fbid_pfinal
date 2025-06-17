@@ -1,6 +1,7 @@
 import sys, os, re
 from flask import Flask, render_template, request
-from pymongo import MongoClient
+from cassandra.cluster import Cluster
+from cassandra.query import dict_factory
 from bson import json_util
 
 # Configuration details
@@ -12,7 +13,12 @@ import predict_utils
 # Set up Flask, Mongo and Elasticsearch
 app = Flask(__name__)
 
-client = MongoClient("mongodb",27017)
+# session = Mongosession("mongodb",27017)
+
+# Conectar con Cassandra
+cluster = Cluster(['cassandra']) 
+session = cluster.connect('agile_data_science')
+session.row_factory = dict_factory  # para obtener dicts en lugar de tuplas
 
 from pyelasticsearch import ElasticSearch
 elastic = ElasticSearch(config.ELASTIC_URL)
@@ -38,7 +44,7 @@ def on_time_performance():
   flight_date = request.args.get('FlightDate')
   flight_num = request.args.get('FlightNum')
   
-  flight = client.agile_data_science.on_time_performance.find_one({
+  flight = session.agile_data_science.on_time_performance.find_one({
     'Carrier': carrier,
     'FlightDate': flight_date,
     'FlightNum': flight_num
@@ -50,7 +56,7 @@ def on_time_performance():
 @app.route("/flights/<origin>/<dest>/<flight_date>")
 def list_flights(origin, dest, flight_date):
   
-  flights = client.agile_data_science.on_time_performance.find(
+  flights = session.agile_data_science.on_time_performance.find(
     {
       'Origin': origin,
       'Dest': dest,
@@ -73,7 +79,7 @@ def list_flights(origin, dest, flight_date):
 # Controller: Fetch a flight table
 @app.route("/total_flights")
 def total_flights():
-  total_flights = client.agile_data_science.flights_by_month.find({}, 
+  total_flights = session.agile_data_science.flights_by_month.find({}, 
     sort = [
       ('Year', 1),
       ('Month', 1)
@@ -83,7 +89,7 @@ def total_flights():
 # Serve the chart's data via an asynchronous request (formerly known as 'AJAX')
 @app.route("/total_flights.json")
 def total_flights_json():
-  total_flights = client.agile_data_science.flights_by_month.find({}, 
+  total_flights = session.agile_data_science.flights_by_month.find({}, 
     sort = [
       ('Year', 1),
       ('Month', 1)
@@ -93,7 +99,7 @@ def total_flights_json():
 # Controller: Fetch a flight chart
 @app.route("/total_flights_chart")
 def total_flights_chart():
-  total_flights = client.agile_data_science.flights_by_month.find({}, 
+  total_flights = session.agile_data_science.flights_by_month.find({}, 
     sort = [
       ('Year', 1),
       ('Month', 1)
@@ -175,14 +181,14 @@ def search_airplanes():
 @app.route("/airplanes/chart/manufacturers.json")
 @app.route("/airplanes/chart/manufacturers.json")
 def airplane_manufacturers_chart():
-  mfr_chart = client.agile_data_science.airplane_manufacturer_totals.find_one()
+  mfr_chart = session.agile_data_science.airplane_manufacturer_totals.find_one()
   return json.dumps(mfr_chart)
 
 # Controller: Fetch a flight and display it
 @app.route("/airplane/<tail_number>")
 @app.route("/airplane/flights/<tail_number>")
 def flights_per_airplane(tail_number):
-  flights = client.agile_data_science.flights_per_airplane.find_one(
+  flights = session.agile_data_science.flights_per_airplane.find_one(
     {'TailNum': tail_number}
   )
   return render_template(
@@ -194,10 +200,10 @@ def flights_per_airplane(tail_number):
 # Controller: Fetch an airplane entity page
 @app.route("/airline/<carrier_code>")
 def airline(carrier_code):
-  airline_summary = client.agile_data_science.airlines.find_one(
+  airline_summary = session.agile_data_science.airlines.find_one(
     {'CarrierCode': carrier_code}
   )
-  airline_airplanes = client.agile_data_science.airplanes_per_carrier.find_one(
+  airline_airplanes = session.agile_data_science.airplanes_per_carrier.find_one(
     {'Carrier': carrier_code}
   )
   return render_template(
@@ -212,7 +218,7 @@ def airline(carrier_code):
 @app.route("/airlines")
 @app.route("/airlines/")
 def airlines():
-  airlines = client.agile_data_science.airplanes_per_carrier.find()
+  airlines = session.agile_data_science.airplanes_per_carrier.find()
   return render_template('all_airlines.html', airlines=airlines)
 
 @app.route("/flights/search")
@@ -325,7 +331,7 @@ def regress_flight_delays():
   prediction_features['FlightNum'] = api_form_values['FlightNum']
   
   # Set the derived values
-  prediction_features['Distance'] = predict_utils.get_flight_distance(client, api_form_values['Origin'], api_form_values['Dest'])
+  prediction_features['Distance'] = predict_utils.get_flight_distance(session, api_form_values['Origin'], api_form_values['Dest'])
   
   # Turn the date into DayOfYear, DayOfMonth, DayOfWeek
   date_features_dict = predict_utils.get_regression_date_args(api_form_values['FlightDate'])
@@ -382,7 +388,7 @@ def classify_flight_delays():
   
   # Set the derived values
   prediction_features['Distance'] = predict_utils.get_flight_distance(
-    client, api_form_values['Origin'],
+    session, api_form_values['Origin'],
     api_form_values['Dest']
   )
   
@@ -396,7 +402,7 @@ def classify_flight_delays():
   # Add a timestamp
   prediction_features['Timestamp'] = predict_utils.get_current_timestamp()
   
-  client.agile_data_science.prediction_tasks.insert_one(
+  session.agile_data_science.prediction_tasks.insert_one(
     prediction_features
   )
   return json_util.dumps(prediction_features)
@@ -418,31 +424,22 @@ def flight_delays_batch_page():
 
 @app.route("/flights/delays/predict_batch/results/<iso_date>")
 def flight_delays_batch_results_page(iso_date):
-  """Serves page for batch prediction results"""
-  
-  # Get today and tomorrow's dates as iso strings to scope query
-  today_dt = iso8601.parse_date(iso_date)
-  rounded_today = today_dt.date()
-  iso_today = rounded_today.isoformat()
-  rounded_tomorrow_dt = rounded_today + datetime.timedelta(days=1)
-  iso_tomorrow = rounded_tomorrow_dt.isoformat()
-  
-  # Fetch today's prediction results from Mongo
-  predictions = client.agile_data_science.prediction_results.find(
-    {
-      'Timestamp': {
-        "$gte": iso_today,
-        "$lte": iso_tomorrow,
-      }
-    }
-  )
-  
-  return render_template(
-    "flight_delays_predict_batch_results.html",
-    predictions=predictions,
-    iso_date=iso_date
-  )
+    """Versión Cassandra del endpoint predict_batch/results"""
 
+    # Consulta las predicciones del día en Cassandra
+    rows = session.execute("""
+        SELECT * FROM predictions_by_day
+        WHERE date_partition = %s
+    """, [iso_date])
+
+    # Convertimos los resultados a lista de diccionarios
+    predictions = [dict(row._asdict()) for row in rows]
+
+    return render_template(
+        "flight_delays_predict_batch_results.html",
+        predictions=predictions,
+        iso_date=iso_date
+    )
 # Make our API a post, so a search engine wouldn't hit it
 @app.route("/flights/delays/predict/classify_realtime", methods=['POST'])
 def classify_flight_delays_realtime():
@@ -471,7 +468,7 @@ def classify_flight_delays_realtime():
   
   # Set the derived values
   prediction_features['Distance'] = predict_utils.get_flight_distance(
-    client, api_form_values['Origin'],
+    session, api_form_values['Origin'],
     api_form_values['Dest']
   )
   
@@ -511,21 +508,22 @@ def flight_delays_page_kafka():
 
 @app.route("/flights/delays/predict/classify_realtime/response/<unique_id>")
 def classify_flight_delays_realtime_response(unique_id):
-  """Serves predictions to polling requestors"""
-  
-  prediction = client.agile_data_science.flight_delay_ml_response.find_one(
-    {
-      "UUID": unique_id
-    }
-  )
-  
-  response = {"status": "WAIT", "id": unique_id}
-  if prediction:
-    response["status"] = "OK"
-    response["prediction"] = prediction
-  
-  return json_util.dumps(response)
+  try:
+      uuid_val = uuid_lib.UUID(unique_id)
+      query = "SELECT * FROM predictions WHERE uuid = %s"
+      result = session.execute(query, (uuid_val,))
+      row = result.one()
 
+      response = {"status": "WAIT", "id": unique_id}
+      if row:
+          # Convertimos a dict para retornarlo como JSON
+          response["status"] = "OK"
+          response["prediction"] = dict(row._asdict())
+
+      return json.dumps(response)
+
+  except Exception as e:
+      return json.dumps({"status": "ERROR", "message": str(e)})
 def shutdown_server():
   func = request.environ.get('werkzeug.server.shutdown')
   if func is None:

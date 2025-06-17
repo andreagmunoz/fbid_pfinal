@@ -60,25 +60,27 @@ function conditionalPoll(data) {
 // Render the response on the page for splits:
 // [-float("inf"), -15.0, 0, 30.0, float("inf")]
 function renderPage(response) {
-
   console.log(response);
+
+  const predictionValue = response.prediction; // <- extrae el número
 
   var displayMessage;
 
-if(response.Prediction == 0 || response.Prediction == '0') {
+  if (predictionValue == 0 || predictionValue == '0') {
     displayMessage = "Early (15+ Minutes Early)";
   }
-  else if(response.Prediction == 1 || response.Prediction == '1') {
+  else if (predictionValue == 1 || predictionValue == '1') {
     displayMessage = "Slightly Early (0-15 Minute Early)";
   }
-  else if(response.Prediction == 2 || response.Prediction == '2') {
+  else if (predictionValue == 2 || predictionValue == '2') {
     displayMessage = "Slightly Late (0-30 Minute Delay)";
   }
-  else if(response.Prediction == 3 || response.Prediction == '3') {
+  else if (predictionValue == 3 || predictionValue == '3') {
     displayMessage = "Very Late (30+ Minutes Late)";
+  } else {
+    displayMessage = "Unknown prediction value";
   }
-  
-  console.log(displayMessage)
 
-  $( "#result" ).empty().append( displayMessage );
+  console.log(displayMessage);
+  $("#result").empty().append(displayMessage);
 }
