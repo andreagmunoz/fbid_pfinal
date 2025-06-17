@@ -49,6 +49,8 @@ function poll(id) {
 function conditionalPoll(data) {
   var response = JSON.parse(data.responseText);
 
+  console.log(response)
+
   if(response.status == "OK") {
     renderPage(response.prediction);
   }
@@ -60,6 +62,7 @@ function conditionalPoll(data) {
 // Render the response on the page for splits:
 // [-float("inf"), -15.0, 0, 30.0, float("inf")]
 function renderPage(response) {
+
   console.log(response);
 
   const predictionValue = response.prediction; // <- extrae el número

@@ -509,21 +509,24 @@ def flight_delays_page_kafka():
 @app.route("/flights/delays/predict/classify_realtime/response/<unique_id>")
 def classify_flight_delays_realtime_response(unique_id):
   try:
-      uuid_val = uuid_lib.UUID(unique_id)
-      query = "SELECT * FROM predictions WHERE uuid = %s"
-      result = session.execute(query, (uuid_val,))
-      row = result.one()
 
+      query = "SELECT * FROM predictions WHERE uuid = %s"
+      row = session.execute(query, (unique_id,)).one()
+      print(query)
+      print("Resultado de Cassandra:", row)
       response = {"status": "WAIT", "id": unique_id}
       if row:
           # Convertimos a dict para retornarlo como JSON
           response["status"] = "OK"
-          response["prediction"] = dict(row._asdict())
-
+          response["prediction"] = dict(row)
+      
+      print(response)
       return json.dumps(response)
 
   except Exception as e:
       return json.dumps({"status": "ERROR", "message": str(e)})
+
+
 def shutdown_server():
   func = request.environ.get('werkzeug.server.shutdown')
   if func is None:

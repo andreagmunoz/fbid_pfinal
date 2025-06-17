@@ -23,7 +23,7 @@ cqlsh cassandra -e "CREATE TABLE IF NOT EXISTS agile_data_science.origin_dest_di
 );"
 
 cqlsh cassandra -e "CREATE TABLE IF NOT EXISTS agile_data_science.predictions (
-  uuid UUID PRIMARY KEY,
+  uuid text PRIMARY KEY,
   origin TEXT,
   dayofweek INT,
   dayofmonth INT,
@@ -41,7 +41,7 @@ cqlsh cassandra -e "CREATE TABLE IF NOT EXISTS agile_data_science.predictions (
 cqlsh cassandra -e  "CREATE TABLE IF NOT EXISTS agile_data_science.predictions_by_day (
   date_partition TEXT, -- 'YYYY-MM-DD'
   timestamp TEXT,
-  uuid UUID,
+  uuid text,
   carrier TEXT,
   dayofmonth INT,
   dayofweek INT,
@@ -57,14 +57,14 @@ cqlsh cassandra -e  "CREATE TABLE IF NOT EXISTS agile_data_science.predictions_b
 );"
 
 cqlsh cassandra -e "CREATE TABLE IF NOT EXISTS agile_data_science.distances (
-  uuid UUID PRIMARY KEY,
+  uuid text PRIMARY KEY,
   origin TEXT,
   dest TEXT,
   distance DOUBLE
 );"
 
 cqlsh cassandra -e "CREATE TABLE IF NOT EXISTS agile_data_science.airplanes (
-  uuid UUID PRIMARY KEY,
+  uuid text PRIMARY KEY,
   carrier TEXT,
   type TEXT
 );"
