@@ -138,6 +138,19 @@ object MakePrediction {
     // Inspect the output
     finalPredictions.printSchema()
 
+    //-----------------------------KAFKA----------------------------------
+    val kafkaOutput = finalPredictions
+      .selectExpr("CAST(UUID AS STRING) as key", "to_json(struct(*)) AS value")
+
+    // Escribir resultados en Kafka
+    val kafkaQuery = kafkaOutput.writeStream
+      .format("kafka")
+      .option("kafka.bootstrap.servers", "kafka:9092")
+      .option("topic", "flight-delay-ml-response")
+      .option("checkpointLocation", "/checkpoint/kafka")
+      .outputMode("append")
+      .start()
+
     // Define MongoUri for connection
     //val writeConfig = WriteConfig(Map("uri" -> "mongodb://mongodb:27017"/agile_data_science.flight_delay_ml_response"))
 
@@ -159,7 +172,7 @@ object MakePrediction {
       .format("mongodb")
       .option("spark.mongodb.connection.uri", "mongodb://mongodb:27017")
       .option("spark.mongodb.database", "agile_data_science")
-      .option("checkpointLocation", "/checkpoint")
+      .option("checkpointLocation", "/checkpoint/mongo")
       .option("spark.mongodb.collection", "flight_delay_ml_response")
       .outputMode("append")
 

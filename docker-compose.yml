@@ -20,14 +20,18 @@ services:
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_CREATE_TOPICS: "flight_delay_classification_request:1:1"
+      KAFKA_CREATE_TOPICS: "flight-delay-ml-request:1:1"
     ports:
     - "9092:9092"  # Exponer el puerto para acceso externo
     networks:
       - docker_network
     restart: always
+    volumes:
+      - ./kafka:/kafka-scripts
     depends_on:
     - zookeeper
+    entrypoint: ["/kafka-scripts/create_topics.sh"]
+
   mongo:  
     image: mongo:7.0.17  
     container_name: mongodb
