@@ -60,3 +60,9 @@ Construido a partir del Dockerfile en `spark/`. Parte de la imagen del master y 
 - Verifica que ambos estén correctamente instalados
 
 Ejecuta el .jar ubicado en `/spark/base/flight_prediction/target/` para hacer las predicciones
+
+# Versión 2 - Vuelta por Kakfa
+
+Se modifica el contenedor del servicio kafka para la creación del topic de respuestas `flight-delay-ml-response`, en el que Spark publica los resultados predichos.
+
+Para ello, se ha modificado la clase `MakePrediction.java` y se ha recompilado el código desde el contenedor `spar_submit`.
