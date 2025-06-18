@@ -1,0 +1,41 @@
+.
+├── airflow_home
+│   ├── airflow.cfg
+│   ├── airflow-webserver.pid
+│   ├── dags
+│   │   ├── __pycache__
+│   │   └── setup.py
+│   ├── init_user.sh
+│   ├── logs
+│   │   ├── agile_data_science_batch_prediction_model_training
+│   │   ├── dag_processor_manager
+│   │   └── scheduler
+│   ├── practica_creativa
+│   ├── resources
+│   │   ├── airflow
+│   │   ├── Deploying_Predictive_Systems.ipynb
+│   │   ├── download_data.sh
+│   │   ├── extract_features.py
+│   │   ├── fetch_prediction_requests.py
+│   │   ├── images
+│   │   ├── import_distances.sh
+│   │   ├── kafka_test.py
+│   │   ├── links.txt
+│   │   ├── load_prediction_results.py
+│   │   ├── make_predictions.py
+│   │   ├── origin_dest_distances.py
+│   │   ├── pymongo_spark.py
+│   │   ├── python_kafka_consumer.py
+│   │   ├── python_kafka_producer.py
+│   │   ├── streaming_test.py
+│   │   ├── test_airflow.sh
+│   │   ├── test_classification_api.sh
+│   │   ├── test_regression_api.sh
+│   │   ├── train_spark_mllib_model.py
+│   │   └── web
+│   └── webserver_config.py
+├── docker-compose.yml
+├── Dockerfile
+└── estructura.txt
+
+12 directories, 26 files
