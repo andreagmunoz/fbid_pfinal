@@ -60,3 +60,7 @@ Construido a partir del Dockerfile en `spark/`. Parte de la imagen del master y 
 - Verifica que ambos estén correctamente instalados
 
 Ejecuta el .jar ubicado en `/spark/base/flight_prediction/target/` para hacer las predicciones
+
+# Resultado de ejecución
+
+![Resultado](img/v1-docker-resultado.png)
